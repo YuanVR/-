@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vestiges | 终极行迹 v24.0</title>
+    <title>Vestiges | 在生长 v25.0 Cloud</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;400;600&family=Noto+Sans+SC:wght@300;500&display=swap" rel="stylesheet">
@@ -11,64 +12,52 @@
         :root { --accent: #6366f1; --bg: #fcfcfd; --danger: #f43f5e; }
         body { background: var(--bg); color: #0f172a; font-family: 'Plus Jakarta Sans', 'Noto Sans SC', sans-serif; overflow-x: hidden; margin: 0; }
         #fxCanvas { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 10000; }
-        .aura-bg {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.03) 0%, transparent 50%),
-                        radial-gradient(circle at 90% 90%, rgba(236, 72, 153, 0.03) 0%, transparent 50%);
-            z-index: -1;
-        }
-        @keyframes pinIn {
-            0% { opacity: 0; transform: translateY(-80px) rotate(8deg); filter: blur(10px); }
-            60% { transform: translateY(10px) rotate(-3deg); }
-            100% { opacity: 1; transform: translateY(0) rotate(0deg); filter: blur(0); }
-        }
+        .aura-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.03) 0%, transparent 50%), radial-gradient(circle at 90% 90%, rgba(236, 72, 153, 0.03) 0%, transparent 50%); }
+        
+        /* 身份验证遮罩 */
+        #authOverlay { position: fixed; inset: 0; background: #fff; z-index: 20000; display: flex; align-items: center; justify-content: center; transition: all 0.5s; }
+        .auth-card { width: 100%; max-width: 320px; text-align: center; }
+
+        /* 核心动画 */
+        @keyframes pinIn { 0% { opacity: 0; transform: translateY(-80px) rotate(8deg); filter: blur(10px); } 60% { transform: translateY(10px) rotate(-3deg); } 100% { opacity: 1; transform: translateY(0) rotate(0deg); filter: blur(0); } }
         .pin-paper { animation: pinIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         .glass { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 10px 40px rgba(0,0,0,0.02); border-radius: 24px; }
         .card-perspective { perspective: 1500px; margin-bottom: 1.5rem; position: relative; }
-        .achievement-card { 
-            transform-style: preserve-3d; transition: transform 0.1s ease-out;
-            background: #fff; border: 1px solid #f1f5f9; border-radius: 32px; overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.02);
-        }
-        .input-line { position: absolute; bottom: 0; left: 0; width: 0; height: 2px; background: var(--accent); transition: width 0.6s ease; }
-        input:focus + .input-line { width: 100%; }
-        .badge {
-            position: absolute; bottom: 25px; right: 25px;
-            padding: 4px 12px; border: 1.5px solid var(--accent);
-            color: var(--accent); border-radius: 100px; font-size: 9px; font-weight: 800;
-            opacity: 0.5; transform: rotate(-8deg); background: #fff; pointer-events: none;
-        }
-        .shock { animation: shock 0.4s cubic-bezier(.36,.07,.19,.97); }
-        @keyframes shock { 0% { transform: scale(1); } 50% { transform: scale(1.015); } 100% { transform: scale(1); } }
+        .achievement-card { transform-style: preserve-3d; transition: transform 0.1s ease-out; background: #fff; border: 1px solid #f1f5f9; border-radius: 32px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.02); }
+        .badge { position: absolute; bottom: 25px; right: 25px; padding: 4px 12px; border: 1.5px solid var(--accent); color: var(--accent); border-radius: 100px; font-size: 9px; font-weight: 800; opacity: 0.5; transform: rotate(-8deg); background: #fff; pointer-events: none; }
         
         .del-btn { opacity: 0; transition: all 0.3s ease; }
         .group:hover .del-btn { opacity: 1; }
-        .card-del-btn {
-            position: absolute; top: 20px; left: 20px; z-index: 100;
-            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(4px);
-            width: 36px; height: 36px; border-radius: 50%;
-            display: flex; items-center; justify-content: center;
-            color: #94a3b8; border: 1px solid #f1f5f9;
-            opacity: 0; transition: all 0.3s ease; cursor: pointer;
-        }
+        .card-del-btn { position: absolute; top: 20px; left: 20px; z-index: 100; background: rgba(255, 255, 255, 0.9); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #94a3b8; border: 1px solid #f1f5f9; opacity: 0; transition: all 0.3s ease; cursor: pointer; }
         .card-perspective:hover .card-del-btn { opacity: 1; }
         .card-del-btn:hover { color: var(--danger); border-color: var(--danger); transform: scale(1.1) translateZ(20px); }
+        .shock { animation: shock 0.4s cubic-bezier(.36,.07,.19,.97); }
+        @keyframes shock { 0% { transform: scale(1); } 50% { transform: scale(1.015); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body class="p-6 md:p-16">
-    <div class="aura-bg"></div>
-    <canvas id="fxCanvas"></canvas>
+    <div id="authOverlay">
+        <div class="auth-card space-y-8">
+            <h1 class="text-4xl font-bold tracking-tighter">VESTIGES.</h1>
+            <p class="text-[10px] text-slate-400 uppercase tracking-[0.4em]">在生长 · 云端同步</p>
+            <div class="space-y-4">
+                <input type="email" id="email" placeholder="Email" class="w-full p-4 bg-slate-50 rounded-2xl focus:outline-none border border-transparent focus:border-indigo-500 transition-all text-sm">
+                <input type="password" id="password" placeholder="Password" class="w-full p-4 bg-slate-50 rounded-2xl focus:outline-none border border-transparent focus:border-indigo-500 transition-all text-sm">
+                <div class="grid grid-cols-2 gap-4 pt-4">
+                    <button onclick="handleAuth('signIn')" class="py-4 bg-slate-900 text-white rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">登录</button>
+                    <button onclick="handleAuth('signUp')" class="py-4 border border-slate-200 text-slate-900 rounded-2xl font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all">注册</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <main class="max-w-6xl mx-auto">
+    <main id="appMain" class="max-w-6xl mx-auto hidden">
         <header class="flex justify-between items-center mb-24 px-4">
             <div class="space-y-1">
                 <h1 class="text-4xl font-bold tracking-tighter text-slate-900">VESTIGES.</h1>
-                <p id="stats" class="text-[10px] text-slate-400 tracking-[0.5em] font-bold uppercase">0 SECURED</p>
+                <p id="stats" class="text-[10px] text-slate-400 tracking-[0.5em] font-bold uppercase">Syncing...</p>
             </div>
-            <div class="flex gap-4">
-                <button onclick="document.getElementById('dataModal').classList.remove('hidden')" class="glass px-4 py-2 text-[10px] tracking-widest text-slate-400 hover:text-indigo-500 transition-all uppercase">Backup System</button>
-                <div class="glass px-6 py-2 text-[10px] tracking-widest text-slate-400 uppercase bg-white/50">Morning Dew</div>
-            </div>
+            <button onclick="_supabase.auth.signOut()" class="glass px-6 py-2 text-[10px] tracking-widest text-slate-300 hover:text-rose-500 transition-all uppercase">Sign Out</button>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-16">
@@ -82,7 +71,6 @@
                     <div id="todoContainer" class="space-y-6"></div>
                 </div>
             </div>
-
             <div class="lg:col-span-7 px-4">
                 <h2 class="text-[10px] font-bold text-slate-300 mb-12 uppercase tracking-[0.6em]">荣誉行迹馆</h2>
                 <div id="gallery" class="grid grid-cols-1 md:grid-cols-2 gap-8"></div>
@@ -91,9 +79,12 @@
         </div>
     </main>
 
+    <div class="aura-bg"></div>
+    <canvas id="fxCanvas"></canvas>
+
     <div id="modal" class="fixed inset-0 bg-white/95 backdrop-blur-3xl hidden z-[9999] flex items-center justify-center p-6">
         <div class="max-w-md w-full text-center opacity-0 translate-y-10 transition-all duration-700" id="modalUI">
-            <h3 id="modalTitle" class="text-4xl font-bold tracking-tighter mb-4 text-slate-900">了结。</h3>
+            <h3 class="text-4xl font-bold tracking-tighter mb-4 text-slate-900">了结。</h3>
             <p class="text-slate-400 text-sm tracking-widest uppercase mb-12 italic">“见证这一刻的发生”</p>
             <div id="uploadArea" class="glass p-8 hover:bg-slate-50 transition-all cursor-pointer group mb-10 border-dashed border-2 border-slate-100 relative overflow-hidden min-h-[240px] flex flex-col items-center justify-center">
                 <input type="file" id="fileInput" class="hidden" accept="image/*">
@@ -110,29 +101,13 @@
         </div>
     </div>
 
-    <div id="dataModal" class="fixed inset-0 bg-black/60 backdrop-blur-md hidden z-[10001] flex items-center justify-center p-6">
-        <div class="bg-white rounded-[32px] p-12 max-w-sm w-full text-center space-y-8">
-            <h4 class="text-xl font-bold tracking-tighter">数据中心</h4>
-            <div class="grid grid-cols-1 gap-4">
-                <button onclick="exportData()" class="w-full py-4 rounded-2xl border border-slate-100 text-xs font-bold uppercase tracking-widest hover:bg-slate-50 transition-all">导出本地备份 (.json)</button>
-                <label class="w-full py-4 rounded-2xl border border-slate-100 text-xs font-bold uppercase tracking-widest hover:bg-slate-50 transition-all cursor-pointer">
-                    导入历史数据
-                    <input type="file" id="importInput" class="hidden" accept=".json" onchange="importData(event)">
-                </label>
-            </div>
-            <button onclick="document.getElementById('dataModal').classList.add('hidden')" class="text-[10px] text-slate-400 uppercase tracking-widest">返回</button>
-        </div>
-    </div>
-
     <script>
-        let state = {
-            todos: JSON.parse(localStorage.getItem('v24_todos') || '[]'),
-            achievements: JSON.parse(localStorage.getItem('v24_achievements') || '[]'),
-            currentIdx: null,
-            vfxIndex: 0,
-            currentPage: 1,
-            itemsPerPage: 4
-        };
+        // 1. Supabase 配置
+        const SUPABASE_URL = 'https://xxdhdzprfmmdmexbtxrj.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_NC7cME-nn37taIOx97l5Cg_Nh1DUNgp';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let state = { todos: [], achievements: [], currentIdx: null, vfxIndex: 0, currentPage: 1, itemsPerPage: 4 };
 
         const elements = {
             input: document.getElementById('taskInput'),
@@ -141,34 +116,59 @@
             pagination: document.getElementById('pagination'),
             modal: document.getElementById('modal'),
             modalUI: document.getElementById('modalUI'),
-            uploadArea: document.getElementById('uploadArea'),
-            fileInput: document.getElementById('fileInput'),
             imagePreview: document.getElementById('imagePreview'),
             uploadPlaceholder: document.getElementById('uploadPlaceholder'),
-            saveBtn: document.getElementById('saveBtn')
+            saveBtn: document.getElementById('saveBtn'),
+            fileInput: document.getElementById('fileInput'),
+            uploadArea: document.getElementById('uploadArea')
         };
 
-        elements.input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && elements.input.value.trim()) {
-                const newTodo = { text: elements.input.value.trim(), id: Date.now(), isNew: true };
-                state.todos.push(newTodo);
-                elements.input.value = '';
-                render(); save();
-                setTimeout(() => { newTodo.isNew = false; }, 600);
+        // 2. 身份验证逻辑
+        async function handleAuth(type) {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            if (!email || !password) return alert("请填写完整信息");
+            
+            const { error } = type === 'signIn' 
+                ? await _supabase.auth.signInWithPassword({ email, password })
+                : await _supabase.auth.signUp({ email, password });
+                
+            if (error) alert(error.message);
+            else if (type === 'signUp') alert('注册成功！请前往邮箱查收验证邮件，激活后即可登录。');
+        }
+
+        _supabase.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                document.getElementById('authOverlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('authOverlay').style.display = 'none';
+                    document.getElementById('appMain').classList.remove('hidden');
+                    refreshCloudData();
+                }, 500);
+            } else {
+                document.getElementById('authOverlay').style.display = 'flex';
+                setTimeout(() => document.getElementById('authOverlay').style.opacity = '1', 10);
+                document.getElementById('appMain').classList.add('hidden');
             }
         });
 
-        window.handleDeleteTodo = (idx) => { state.todos.splice(idx, 1); render(); save(); };
-        window.handleDeleteAchievement = (e, idxOnPage) => {
-            e.stopPropagation();
-            const absoluteIdx = (state.currentPage - 1) * state.itemsPerPage + idxOnPage;
-            if (confirm("确定要删除这段行迹吗？这将无法恢复。")) {
-                state.achievements.splice(absoluteIdx, 1);
-                const totalPages = Math.ceil(state.achievements.length / state.itemsPerPage);
-                if (state.currentPage > totalPages && state.currentPage > 1) state.currentPage--;
-                render(); save();
+        // 3. 数据云端同步
+        async function refreshCloudData() {
+            const { data: todos } = await _supabase.from('todos').select('*').order('created_at', { ascending: true });
+            const { data: achievements } = await _supabase.from('achievements').select('*').order('id', { ascending: false });
+            state.todos = todos || [];
+            state.achievements = achievements || [];
+            render();
+        }
+
+        elements.input.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter' && elements.input.value.trim()) {
+                const text = elements.input.value.trim();
+                elements.input.value = '';
+                await _supabase.from('todos').insert([{ text }]);
+                refreshCloudData();
             }
-        };
+        });
 
         window.handleComplete = (idx, e) => {
             state.currentIdx = idx;
@@ -197,43 +197,57 @@
             }
         };
 
-        elements.saveBtn.onclick = () => {
-            state.achievements.unshift({ text: state.todos[state.currentIdx].text, img: elements.imagePreview.src, date: new Date().toLocaleDateString() });
-            state.todos.splice(state.currentIdx, 1);
+        elements.saveBtn.onclick = async () => {
+            const todo = state.todos[state.currentIdx];
+            const achievement = {
+                text: todo.text,
+                img: elements.imagePreview.src || null,
+                date: new Date().toLocaleDateString()
+            };
+            await _supabase.from('achievements').insert([achievement]);
+            await _supabase.from('todos').delete().eq('id', todo.id);
             closeModal();
         };
 
         window.closeModal = () => {
             if (state.currentIdx !== null && elements.saveBtn.classList.contains('hidden')) {
-                state.achievements.unshift({ text: state.todos[state.currentIdx].text, img: null, date: new Date().toLocaleDateString() });
-                state.todos.splice(state.currentIdx, 1);
+                const todo = state.todos[state.currentIdx];
+                _supabase.from('achievements').insert([{ text: todo.text, img: null, date: new Date().toLocaleDateString() }])
+                    .then(() => _supabase.from('todos').delete().eq('id', todo.id))
+                    .then(() => finishClose());
+            } else {
+                finishClose();
             }
+        };
+
+        function finishClose() {
             elements.modalUI.style.opacity = '0';
             setTimeout(() => {
                 elements.modal.classList.add('hidden'); elements.saveBtn.classList.add('hidden');
                 elements.imagePreview.classList.add('hidden'); elements.uploadPlaceholder.classList.remove('hidden');
-                elements.fileInput.value = ''; state.currentIdx = null; render(); save();
+                elements.fileInput.value = ''; state.currentIdx = null; refreshCloudData();
             }, 500);
+        }
+
+        window.handleDeleteTodo = async (id) => {
+            await _supabase.from('todos').delete().eq('id', id);
+            refreshCloudData();
         };
 
-        window.handleTilt = (e, cardContainer) => {
-            const card = cardContainer.querySelector('.achievement-card');
-            const rect = cardContainer.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width - 0.5;
-            const y = (e.clientY - rect.top) / rect.height - 0.5;
-            card.style.transform = `rotateX(${y * -15}deg) rotateY(${x * 15}deg)`;
-        };
-
-        window.resetTilt = (cardContainer) => {
-            cardContainer.querySelector('.achievement-card').style.transform = `rotateX(0deg) rotateY(0deg)`;
+        window.handleDeleteAchievement = async (e, id) => {
+            e.stopPropagation();
+            if (confirm("确定要删除这段行迹吗？")) {
+                await _supabase.from('achievements').delete().eq('id', id);
+                refreshCloudData();
+            }
         };
 
         function render() {
             elements.container.innerHTML = state.todos.map((t, i) => `
-                <div class="glass p-8 flex items-center justify-between bg-white group ${t.isNew ? 'pin-paper' : ''}">
+                <div class="glass p-8 flex items-center justify-between bg-white group pin-paper">
                     <span class="text-slate-800 font-light text-2xl tracking-tight">${t.text}</span>
                     <div class="flex gap-4 items-center">
-                        <button onclick="handleDeleteTodo(${i})" class="del-btn w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                        <button onclick="handleDeleteTodo(${t.id})" class="del-btn w-10 h-10 rounded-full flex items-center justify-center text-slate-200 hover:text-rose-500 transition-all"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                         <button onclick="handleComplete(${i}, event)" class="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all transform active:scale-75 shadow-sm"><i data-lucide="check" class="w-6 h-6"></i></button>
                     </div>
                 </div>
@@ -243,76 +257,45 @@
             const paginatedItems = state.achievements.slice(start, start + state.itemsPerPage);
             const totalPages = Math.max(1, Math.ceil(state.achievements.length / state.itemsPerPage));
 
-            elements.gallery.innerHTML = paginatedItems.map((a, i) => {
+            elements.gallery.innerHTML = paginatedItems.map((a) => {
                 const content = a.img ? `<img src="${a.img}" class="w-full h-80 object-cover opacity-95">` : `<div class="w-full h-80 flex items-center justify-center p-12 bg-slate-50 text-center text-slate-400 italic font-light">“${a.text}”</div>`;
-                return `
-                    <div class="card-perspective" onmousemove="handleTilt(event, this)" onmouseleave="resetTilt(this)">
-                        <button onclick="handleDeleteAchievement(event, ${i})" class="card-del-btn shadow-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
-                        <div class="achievement-card">
-                            ${content}
-                            <div class="p-10"><p class="text-xl font-medium text-slate-900 mb-2">${a.text}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">${a.date}</p></div>
-                            <div class="badge shadow-sm">SECURED</div>
-                        </div>
-                    </div>`;
+                return `<div class="card-perspective" onmousemove="handleTilt(event, this)" onmouseleave="resetTilt(this)"><button onclick="handleDeleteAchievement(event, ${a.id})" class="card-del-btn shadow-lg"><i data-lucide="x" class="w-4 h-4"></i></button><div class="achievement-card">${content}<div class="p-10"><p class="text-xl font-medium text-slate-900 mb-2">${a.text}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">${a.date}</p></div><div class="badge shadow-sm">SECURED</div></div></div>`;
             }).join('');
 
-            elements.pagination.innerHTML = totalPages > 1 ? `
-                <button onclick="changePage(-1)" ${state.currentPage === 1 ? 'disabled' : ''} class="text-xs tracking-widest uppercase ${state.currentPage === 1 ? 'opacity-20' : 'hover:text-indigo-500'}">Prev</button>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Page ${state.currentPage} / ${totalPages}</span>
-                <button onclick="changePage(1)" ${state.currentPage === totalPages ? 'disabled' : ''} class="text-xs tracking-widest uppercase ${state.currentPage === totalPages ? 'opacity-20' : 'hover:text-indigo-500'}">Next</button>
-            ` : '';
+            elements.pagination.innerHTML = totalPages > 1 ? `<button onclick="changePage(-1)" ${state.currentPage === 1 ? 'disabled' : ''} class="text-xs tracking-widest uppercase ${state.currentPage === 1 ? 'opacity-20' : 'hover:text-indigo-500'}">Prev</button><span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Page ${state.currentPage} / ${totalPages}</span><button onclick="changePage(1)" ${state.currentPage === totalPages ? 'disabled' : ''} class="text-xs tracking-widest uppercase ${state.currentPage === totalPages ? 'opacity-20' : 'hover:text-indigo-500'}">Next</button>` : '';
             document.getElementById('stats').innerText = `${state.achievements.length} SECURED`;
             lucide.createIcons();
         }
 
         window.changePage = (dir) => { state.currentPage += dir; render(); };
-        function save() { localStorage.setItem('v24_todos', JSON.stringify(state.todos)); localStorage.setItem('v24_achievements', JSON.stringify(state.achievements)); }
-        
-        // 数据迁移工具
-        window.exportData = () => {
-            const blob = new Blob([JSON.stringify(state)], {type: 'application/json'});
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = `vestiges_backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
-        };
-        window.importData = (e) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const data = JSON.parse(event.target.result);
-                if(data.todos && data.achievements) {
-                    state = {...state, ...data}; render(); save();
-                    alert("同步成功！你的行迹已找回。");
-                    document.getElementById('dataModal').classList.add('hidden');
-                }
-            };
-            reader.readAsDataURL(e.target.files[0]);
-        };
+        window.handleTilt = (e, cardC) => { const r = cardC.getBoundingClientRect(); const x = (e.clientX-r.left)/r.width-0.5, y = (e.clientY-r.top)/r.height-0.5; cardC.querySelector('.achievement-card').style.transform = `rotateX(${y*-15}deg) rotateY(${x*15}deg)`; };
+        window.resetTilt = (cardC) => { cardC.querySelector('.achievement-card').style.transform = `rotateX(0deg) rotateY(0deg)`; };
 
-        // --- VFX 引擎 ---
+        // --- VFX Classes ---
         let vfxObjects = [];
         const fxCanvas = document.getElementById('fxCanvas');
         const ctx = fxCanvas.getContext('2d');
+        
         function triggerSequentialArtVFX(x, y) {
             const mode = state.vfxIndex % 5; state.vfxIndex++;
             const colors = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#c084fc'];
-            if(mode === 0) {
-                for(let i=0; i<80; i++) { const a = Math.random()*Math.PI*2; const d = 250 + Math.random()*150; vfxObjects.push(new BaseParticle(x+Math.cos(a)*d, y+Math.sin(a)*d, x, y, colors[0], 'in')); }
-                setTimeout(() => { for(let i=0; i<250; i++) vfxObjects.push(new BaseParticle(x, y, null, null, colors[4], 'out')); }, 300);
-            } else if(mode === 1) { for(let i=0; i<8; i++) vfxObjects.push(new SwirlDragon(x, y, colors[i%5], i));
-            } else if(mode === 2) { vfxObjects.push(new GildedRing(x, y));
-            } else if(mode === 3) { for(let i=0; i<10; i++) vfxObjects.push(new Vine(x, y, (i/10)*Math.PI*2));
-            } else { vfxObjects.push(new Mandala(x, y)); }
+            if(mode===0) { for(let i=0;i<80;i++){const a=Math.random()*Math.PI*2, d=250+Math.random()*150; vfxObjects.push(new BaseParticle(x+Math.cos(a)*d,y+Math.sin(a)*d,x,y,colors[0],'in'));} setTimeout(()=>{for(let i=0;i<250;i++)vfxObjects.push(new BaseParticle(x,y,null,null,colors[4],'out'));},300); }
+            else if(mode===1){ for(let i=0;i<8;i++)vfxObjects.push(new SwirlDragon(x,y,colors[i%5],i)); }
+            else if(mode===2){ vfxObjects.push(new GildedRing(x,y)); }
+            else if(mode===3){ for(let i=0;i<10;i++)vfxObjects.push(new Vine(x,y,(i/10)*Math.PI*2)); }
+            else { vfxObjects.push(new Mandala(x,y)); }
         }
 
-        class BaseParticle { constructor(x, y, tx, ty, color, mode) { this.x=x; this.y=y; this.tx=tx; this.ty=ty; this.color=color; this.mode=mode; this.life=1; this.decay=0.015; this.size=Math.random()*3+1; if(mode==='out'){ const a=Math.random()*Math.PI*2; const s=Math.random()*22+8; this.vx=Math.cos(a)*s; this.vy=Math.sin(a)*s; } } update() { if(this.mode==='in'){ this.x+=(this.tx-this.x)*0.15; this.y+=(this.ty-this.y)*0.15; } else{ this.x+=this.vx; this.y+=this.vy; this.vx*=0.97; this.vy*=0.97; } this.life-=this.decay; } draw() { ctx.globalAlpha=this.life; ctx.fillStyle=this.color; ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); } }
-        class SwirlDragon { constructor(x, y, color, index) { this.cx=x; this.cy=y; this.color=color; this.angle=(index/8)*Math.PI*2; this.r=10; this.life=1; this.h=[]; this.expand=5; this.rot=0.08; } update() { this.angle+=this.rot; this.r+=this.expand; const px=this.cx+Math.cos(this.angle)*this.r; const py=this.cy+Math.sin(this.angle)*this.r; this.h.push({x:px,y:py}); if(this.h.length>45)this.h.shift(); this.life-=0.007; } draw() { if(this.h.length<2)return; ctx.beginPath(); ctx.moveTo(this.h[0].x,this.h[0].y); for(let p of this.h)ctx.lineTo(p.x,p.y); ctx.strokeStyle=this.color; ctx.lineWidth=this.life*5; ctx.lineCap='round'; ctx.globalAlpha=this.life; ctx.shadowBlur=20*this.life; ctx.shadowColor=this.color; ctx.stroke(); ctx.shadowBlur=0; } }
-        class GildedRing { constructor(x, y) { this.x=x; this.y=y; this.r=0; this.life=1; this.maxR=window.innerHeight; } update() { this.r+=(this.maxR-this.r)*0.05+5; this.life-=0.008; if(this.life>0.1) for(let i=0;i<3;i++) vfxObjects.push(new GildedDust(this.x+Math.cos(Math.random()*Math.PI*2)*this.r, this.y+Math.sin(Math.random()*Math.PI*2)*this.r)); } draw() { ctx.save(); ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI * 2); const grad=ctx.createRadialGradient(this.x,this.y,this.r*0.9,this.x,this.y,this.r); grad.addColorStop(0.6, `rgba(251, 191, 36,${this.life*0.7})`); grad.addColorStop(1, `rgba(212, 175, 55, 0)`); ctx.strokeStyle=grad; ctx.lineWidth=25*this.life; ctx.shadowColor="#fbbf24"; ctx.shadowBlur=30*this.life; ctx.stroke(); ctx.restore(); } }
-        class GildedDust { constructor(x,y){this.x=x;this.y=y;this.life=1;this.decay=0.02;this.p=Math.random()*Math.PI;} update(){this.life-=this.decay;this.p+=0.15;} draw(){ const o=this.life*(Math.sin(this.p)*0.5+0.5); ctx.globalAlpha=o; ctx.fillStyle="#fff7ed"; ctx.beginPath(); ctx.arc(this.x,this.y,Math.random()*2,0,Math.PI*2); ctx.fill(); ctx.shadowColor="#fbbf24"; ctx.shadowBlur=8*o; ctx.fill(); ctx.shadowBlur=0; } }
-        class Vine { constructor(x,y,a){this.p=[{x,y}];this.a=a;this.life=1;this.s=0;} update(){if(this.s<140){const l=this.p[this.p.length-1];this.a+=(Math.random()-0.5)*0.3;this.p.push({x:l.x+Math.cos(this.a)*10, y:l.y+Math.sin(this.a)*10});this.s++;}else{this.life-=0.01;}} draw(){ if(this.p.length<2)return; ctx.save(); ctx.beginPath(); ctx.moveTo(this.p[0].x,this.p[0].y); for(let p of this.p)ctx.lineTo(p.x,p.y); ctx.strokeStyle='#10b981'; ctx.lineWidth=6*this.life; ctx.lineCap='round'; ctx.globalAlpha=Math.min(1,this.life*1.8); ctx.shadowBlur=20; ctx.shadowColor="#34d399"; ctx.stroke(); ctx.restore(); } }
-        class Mandala { constructor(x,y){this.x=x;this.y=y;this.r=0;this.life=1;this.maxR=window.innerHeight*0.8;} update(){this.r+=(this.maxR-this.r)*0.03+5;this.life-=0.008;} draw(){ ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.r*0.005);ctx.strokeStyle=`rgba(99, 102, 241, ${this.life})`;ctx.lineWidth=2;ctx.globalAlpha=this.life;for(let i=0;i<8;i++){ctx.rotate(Math.PI/4);ctx.strokeRect(-this.r/2,-this.r/2,this.r,this.r);ctx.beginPath();ctx.arc(0,0,this.r/2.2,0,Math.PI*2);ctx.stroke();}ctx.restore(); } }
+        class BaseParticle { constructor(x,y,tx,ty,c,m){this.x=x;this.y=y;this.tx=tx;this.ty=ty;this.c=c;this.m=m;this.life=1;this.decay=0.015;this.size=Math.random()*3+1; if(m==='out'){const a=Math.random()*Math.PI*2,s=Math.random()*22+8;this.vx=Math.cos(a)*s;this.vy=Math.sin(a)*s;}} update(){if(this.m==='in'){this.x+=(this.tx-this.x)*0.15;this.y+=(this.ty-this.y)*0.15;}else{this.x+=this.vx;this.y+=this.vy;this.vx*=0.97;this.vy*=0.97;}this.life-=this.decay;} draw(){ctx.globalAlpha=this.life;ctx.fillStyle=this.c;ctx.beginPath();ctx.arc(this.x,this.y,this.size,0,Math.PI*2);ctx.fill();}}
+        class SwirlDragon { constructor(x,y,c,i){this.cx=x;this.cy=y;this.c=c;this.angle=(i/8)*Math.PI*2;this.r=10;this.life=1;this.h=[];this.expand=5;this.rot=0.08;} update(){this.angle+=this.rot;this.r+=this.expand;const px=this.cx+Math.cos(this.angle)*this.r, py=this.cy+Math.sin(this.angle)*this.r;this.h.push({x:px,y:py});if(this.h.length>45)this.h.shift();this.life-=0.007;} draw(){if(this.h.length<2)return;ctx.beginPath();ctx.moveTo(this.h[0].x,this.h[0].y);for(let p of this.h)ctx.lineTo(p.x,p.y);ctx.strokeStyle=this.c;ctx.lineWidth=this.life*5;ctx.lineCap='round';ctx.globalAlpha=this.life;ctx.shadowBlur=20*this.life;ctx.shadowColor=this.c;ctx.stroke();ctx.shadowBlur=0;}}
+        class GildedRing { constructor(x,y){this.x=x;this.y=y;this.r=0;this.life=1;this.maxR=window.innerHeight;} update(){this.r+=(this.maxR-this.r)*0.05+5;this.life-=0.008;if(this.life>0.1)for(let i=0;i<3;i++)vfxObjects.push(new GildedDust(this.x+Math.cos(Math.random()*Math.PI*2)*this.r,this.y+Math.sin(Math.random()*Math.PI*2)*this.r));} draw(){ctx.save();ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);const g=ctx.createRadialGradient(this.x,this.y,this.r*0.9,this.x,this.y,this.r);g.addColorStop(0.6,`rgba(251,191,36,${this.life*0.7})`);g.addColorStop(1,`rgba(212,175,55,0)`);ctx.strokeStyle=g;ctx.lineWidth=25*this.life;ctx.shadowColor="#fbbf24";ctx.shadowBlur=30*this.life;ctx.stroke();ctx.restore();}}
+        class GildedDust { constructor(x,y){this.x=x;this.y=y;this.life=1;this.decay=0.02;this.p=Math.random()*Math.PI;} update(){this.life-=this.decay;this.p+=0.15;} draw(){const o=this.life*(Math.sin(this.p)*0.5+0.5);ctx.globalAlpha=o;ctx.fillStyle="#fff7ed";ctx.beginPath();ctx.arc(this.x,this.y,Math.random()*2,0,Math.PI*2);ctx.fill();ctx.shadowColor="#fbbf24";ctx.shadowBlur=8*o;ctx.fill();ctx.shadowBlur=0;}}
+        class Vine { constructor(x,y,a){this.p=[{x,y}];this.a=a;this.life=1;this.s=0;} update(){if(this.s<140){const l=this.p[this.p.length-1];this.a+=(Math.random()-0.5)*0.3;this.p.push({x:l.x+Math.cos(this.a)*10,y:l.y+Math.sin(this.a)*10});this.s++;}else{this.life-=0.01;}} draw(){if(this.p.length<2)return;ctx.save();ctx.beginPath();ctx.moveTo(this.p[0].x,this.p[0].y);for(let p of this.p)ctx.lineTo(p.x,p.y);ctx.strokeStyle='#10b981';ctx.lineWidth=6*this.life;ctx.lineCap='round';ctx.globalAlpha=Math.min(1,this.life*1.8);ctx.shadowBlur=20;ctx.shadowColor="#34d399";ctx.stroke();ctx.restore();}}
+        class Mandala { constructor(x,y){this.x=x;this.y=y;this.r=0;this.life=1;this.maxR=window.innerHeight*0.8;} update(){this.r+=(this.maxR-this.r)*0.03+5;this.life-=0.008;} draw(){ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.r*0.005);ctx.strokeStyle=`rgba(99, 102, 241, ${this.life})`;ctx.lineWidth=2;ctx.globalAlpha=this.life;for(let i=0;i<8;i++){ctx.rotate(Math.PI/4);ctx.strokeRect(-this.r/2,-this.r/2,this.r,this.r);ctx.beginPath();ctx.arc(0,0,this.r/2.2,0,Math.PI*2);ctx.stroke();}ctx.restore();}}
 
-        function vfxLoop() { ctx.clearRect(0,0,fxCanvas.width,fxCanvas.height); vfxObjects=vfxObjects.filter(o=>o.life>0); vfxObjects.forEach(o=>{o.update();o.draw();}); requestAnimationFrame(vfxLoop); }
-        window.onload = () => { fxCanvas.width=window.innerWidth; fxCanvas.height=window.innerHeight; vfxLoop(); render(); };
-        window.onresize = () => { fxCanvas.width = window.innerWidth; fxCanvas.height = window.innerHeight; };
+        function vfxLoop(){ctx.clearRect(0,0,fxCanvas.width,fxCanvas.height);vfxObjects=vfxObjects.filter(o=>o.life>0);vfxObjects.forEach(o=>{o.update();o.draw();});requestAnimationFrame(vfxLoop);}
+        window.onload=()=>{fxCanvas.width=window.innerWidth;fxCanvas.height=window.innerHeight;vfxLoop();};
+        window.onresize=()=>{fxCanvas.width=window.innerWidth;fxCanvas.height=window.innerHeight;};
     </script>
 </body>
 </html>
