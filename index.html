@@ -137,12 +137,33 @@
         });
 
         async function refreshCloudData() {
-            const { data: todos } = await _supabase.from('todos').select('*').order('created_at', { ascending: true });
-            const { data: achievements } = await _supabase.from('achievements').select('*').order('id', { ascending: false });
-            state.todos = todos || [];
-            state.achievements = achievements || [];
-            render();
-        }
+    document.getElementById('stats').innerText = "Syncing...";
+
+    // 1. 获取任务（文字量小，可以全量）
+    const { data: todos } = await _supabase.from('todos')
+        .select('*')
+        .order('created_at', { ascending: true });
+    
+    // 2. 获取成就（关键：分页查询）
+    const start = (state.currentPage - 1) * state.itemsPerPage;
+    const end = start + state.itemsPerPage - 1;
+
+    const { data: achievements, count } = await _supabase.from('achievements')
+        .select('*', { count: 'exact' }) 
+        .order('id', { ascending: false })
+        .range(start, end); // 只取当前页的范围
+
+    state.todos = todos || [];
+    state.achievements = achievements || [];
+    state.totalItems = count || 0; // 记录总数用于渲染分页器
+    render();
+}
+
+// 同时修改 changePage 函数
+window.changePage = (dir) => {
+    state.currentPage += dir;
+    refreshCloudData(); // 翻页时重新请求数据库
+};
 
         elements.input.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter' && elements.input.value.trim()) {
@@ -167,20 +188,36 @@
             setTimeout(() => { elements.modal.classList.remove('hidden'); setTimeout(() => { elements.modalUI.style.opacity = '1'; elements.modalUI.style.transform = 'translateY(0)'; }, 50); }, 800);
         };
 
-        elements.uploadArea.onclick = () => elements.fileInput.click();
         elements.fileInput.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    elements.imagePreview.src = event.target.result;
-                    elements.imagePreview.classList.remove('hidden');
-                    elements.uploadPlaceholder.classList.add('hidden');
-                    elements.saveBtn.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            }
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // 限制最大宽度为 800px，高度按比例缩放
+                const MAX_WIDTH = 800;
+                const scale = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH;
+                canvas.height = img.height * scale;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                // 核心：转为 jpeg 格式并设置质量为 0.7 (70%)
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                
+                elements.imagePreview.src = compressedBase64;
+                elements.imagePreview.classList.remove('hidden');
+                elements.uploadPlaceholder.classList.add('hidden');
+                elements.saveBtn.classList.remove('hidden');
+            };
         };
+        reader.readAsDataURL(file);
+    }
+};
 
         elements.saveBtn.onclick = async () => {
     const todo = state.todos[state.currentIdx];
@@ -218,15 +255,51 @@
         window.handleDeleteAchievement = async (e, id) => { e.stopPropagation(); if (confirm("确定删除？")) { await _supabase.from('achievements').delete().eq('id', id); refreshCloudData(); } };
 
         function render() {
-            elements.container.innerHTML = state.todos.map((t, i) => `<div class="glass p-8 flex items-center justify-between bg-white group pin-paper"><span class="text-slate-800 font-light text-2xl tracking-tight">${t.text}</span><div class="flex gap-4 items-center"><button onclick="handleDeleteTodo(${t.id})" class="del-btn w-10 h-10 rounded-full flex items-center justify-center text-slate-200 hover:text-rose-500 transition-all"><i data-lucide="trash-2" class="w-5 h-5"></i></button><button onclick="handleComplete(${i}, event)" class="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all transform active:scale-75 shadow-sm"><i data-lucide="check" class="w-6 h-6"></i></button></div></div>`).join('');
-            const start = (state.currentPage - 1) * state.itemsPerPage;
-            const paginated = state.achievements.slice(start, start + state.itemsPerPage);
-            const total = Math.ceil(state.achievements.length / state.itemsPerPage);
-            elements.gallery.innerHTML = paginated.map((a) => `<div class="card-perspective" onmousemove="handleTilt(event, this)" onmouseleave="resetTilt(this)"><button onclick="handleDeleteAchievement(event, ${a.id})" class="card-del-btn shadow-lg"><i data-lucide="x" class="w-4 h-4"></i></button><div class="achievement-card">${a.img ? `<img src="${a.img}" class="w-full h-80 object-cover opacity-95">` : `<div class="w-full h-80 flex items-center justify-center p-12 bg-slate-50 text-center text-slate-400 italic font-light">“${a.text}”</div>`}<div class="p-10"><p class="text-xl font-medium text-slate-900 mb-2">${a.text}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">${a.date}</p></div><div class="badge shadow-sm">SECURED</div></div></div>`).join('');
-            elements.pagination.innerHTML = total > 1 ? `<button onclick="changePage(-1)" ${state.currentPage===1?'disabled':''} class="text-xs tracking-widest uppercase ${state.currentPage===1?'opacity-20':'hover:text-indigo-500'}">Prev</button><span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Page ${state.currentPage}/${total}</span><button onclick="changePage(1)" ${state.currentPage===total?'disabled':''} class="text-xs tracking-widest uppercase ${state.currentPage===total?'opacity-20':'hover:text-indigo-500'}">Next</button>` : '';
-            document.getElementById('stats').innerText = `${state.achievements.length} SECURED`;
-            lucide.createIcons();
-        }
+    // 1. 渲染左侧任务列表 (保持不变)
+    elements.container.innerHTML = state.todos.map((t, i) => `
+        <div class="glass p-8 flex items-center justify-between bg-white group pin-paper">
+            <span class="text-slate-800 font-light text-2xl tracking-tight">${t.text}</span>
+            <div class="flex gap-4 items-center">
+                <button onclick="handleDeleteTodo(${t.id})" class="del-btn w-10 h-10 rounded-full flex items-center justify-center text-slate-200 hover:text-rose-500 transition-all">
+                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                </button>
+                <button onclick="handleComplete(${i}, event)" class="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all transform active:scale-75 shadow-sm">
+                    <i data-lucide="check" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>`).join('');
+
+    // 2. 【核心改动】计算总页数：现在必须基于云端返回的总数 state.totalItems
+    const total = Math.ceil((state.totalItems || 0) / state.itemsPerPage);
+
+    // 3. 【核心改动】渲染画廊：不再使用 .slice()，因为 state.achievements 本身就只有 4 条
+    elements.gallery.innerHTML = state.achievements.map((a) => `
+        <div class="card-perspective" onmousemove="handleTilt(event, this)" onmouseleave="resetTilt(this)">
+            <button onclick="handleDeleteAchievement(event, ${a.id})" class="card-del-btn shadow-lg">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+            <div class="achievement-card">
+                ${a.img ? `<img src="${a.img}" class="w-full h-80 object-cover opacity-95">` : `<div class="w-full h-80 flex items-center justify-center p-12 bg-slate-50 text-center text-slate-400 italic font-light">“${a.text}”</div>`}
+                <div class="p-10">
+                    <p class="text-xl font-medium text-slate-900 mb-2">${a.text}</p>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-widest">${a.date}</p>
+                </div>
+                <div class="badge shadow-sm">SECURED</div>
+            </div>
+        </div>`).join('');
+
+    // 4. 【核心改动】渲染分页按钮
+    elements.pagination.innerHTML = total > 1 ? `
+        <button onclick="changePage(-1)" ${state.currentPage === 1 ? 'disabled' : ''} class="text-xs tracking-widest uppercase ${state.currentPage === 1 ? 'opacity-20' : 'hover:text-indigo-500'}">Prev</button>
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Page ${state.currentPage} / ${total}</span>
+        <button onclick="changePage(1)" ${state.currentPage === total ? 'disabled' : ''} class="text-xs tracking-widest uppercase ${state.currentPage === total ? 'opacity-20' : 'hover:text-indigo-500'}">Next</button>
+    ` : '';
+
+    // 5. 【核心改动】左上角统计数字：也改为显示云端总数
+    document.getElementById('stats').innerText = `${state.totalItems || 0} SECURED`;
+    
+    lucide.createIcons();
+}
 
         window.changePage = (dir) => { state.currentPage += dir; render(); };
         window.handleTilt = (e, cardC) => { const r = cardC.getBoundingClientRect(); const x = (e.clientX-r.left)/r.width-0.5, y = (e.clientY-r.top)/r.height-0.5; cardC.querySelector('.achievement-card').style.transform = `rotateX(${y*-15}deg) rotateY(${x*15}deg)`; };
