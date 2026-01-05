@@ -80,7 +80,8 @@
         <div class="max-w-md w-full text-center opacity-0 translate-y-10 transition-all duration-700" id="modalUI">
             <h3 class="text-4xl font-bold tracking-tighter mb-4 text-slate-900">了结。</h3>
             <p class="text-slate-400 text-sm tracking-widest uppercase mb-12 italic">“见证这一刻的发生”</p>
-            <div id="uploadArea" class="glass p-8 hover:bg-slate-50 transition-all cursor-pointer group mb-10 border-dashed border-2 border-slate-100 relative overflow-hidden min-h-[240px] flex flex-col items-center justify-center">
+            <div id="uploadArea" onclick="document.getElementById('fileInput').click()"class="
+glass p-8 hover:bg-slate-50 transition-all cursor-pointer group mb-10 border-dashed border-2 border-slate-100 relative overflow-hidden min-h-[240px] flex flex-col items-center justify-center">
                 <input type="file" id="fileInput" class="hidden" accept="image/*">
                 <img id="imagePreview" class="absolute inset-0 w-full h-full object-cover hidden z-10">
                 <div id="uploadPlaceholder" class="relative z-0">
@@ -165,17 +166,31 @@ window.changePage = (dir) => {
     refreshCloudData(); // 翻页时重新请求数据库
 };
 
-        elements.input.addEventListener('keydown', async (e) => {
+// 乐观更新：先显示，后同步
+elements.input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && elements.input.value.trim()) {
         const val = elements.input.value.trim();
         elements.input.value = '';
-        const { error } = await _supabase.from('todos').insert([{ text: val }]);
-        if (error) {
-            console.error("提交失败:", error.message);
-            alert("存入云端失败，请检查 Supabase 表名是否为 todos，且 RLS 设置为 ALL");
-        } else {
-            refreshCloudData();
-        }
+
+        // 1. 【立即响应】先在本地生成一个临时任务
+        const tempTodo = { 
+            id: Date.now(), // 临时 ID
+            text: val, 
+            isNew: true 
+        };
+        state.todos.push(tempTodo);
+        render(); // 瞬间渲染界面，用户感觉不到延迟
+
+        // 2. 【后台同步】不使用 await，让它在后台慢慢传
+        _supabase.from('todos').insert([{ text: val }]).then(({ error }) => {
+            if (error) {
+                console.error("同步失败:", error.message);
+                // 可选：如果同步失败，可以在这里把 state.todos 里的这项删掉
+            } else {
+                // 同步成功后，悄悄刷新一次真实数据（比如拿回数据库生成的真正 ID）
+                refreshCloudData(); 
+            }
+        });
     }
 });
 
@@ -269,10 +284,25 @@ window.changePage = (dir) => {
             </div>
         </div>`).join('');
 
-    // 2. 【核心改动】计算总页数：现在必须基于云端返回的总数 state.totalItems
+    // 2. 【核心function render() {
+    // 1. 任务列表：显示本地+云端的所有任务
+    elements.container.innerHTML = state.todos.map((t, i) => `
+        <div class="glass p-8 flex items-center justify-between bg-white group pin-paper">
+            <span class="text-slate-800 font-light text-2xl tracking-tight">${t.text}</span>
+            <div class="flex gap-4 items-center">
+                <button onclick="handleDeleteTodo(${t.id})" class="del-btn w-10 h-10 rounded-full flex items-center justify-center text-slate-200 hover:text-rose-500 transition-all">
+                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                </button>
+                <button onclick="handleComplete(${i}, event)" class="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all transform active:scale-75 shadow-sm">
+                    <i data-lucide="check" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>`).join('');
+
+    // 2. 计算总页数：必须用 state.totalItems
     const total = Math.ceil((state.totalItems || 0) / state.itemsPerPage);
 
-    // 3. 【核心改动】渲染画廊：不再使用 .slice()，因为 state.achievements 本身就只有 4 条
+    // 3. 画廊渲染：直接用 state.achievements (它已经是由云端分页好的 4 条数据)
     elements.gallery.innerHTML = state.achievements.map((a) => `
         <div class="card-perspective" onmousemove="handleTilt(event, this)" onmouseleave="resetTilt(this)">
             <button onclick="handleDeleteAchievement(event, ${a.id})" class="card-del-btn shadow-lg">
@@ -288,16 +318,15 @@ window.changePage = (dir) => {
             </div>
         </div>`).join('');
 
-    // 4. 【核心改动】渲染分页按钮
+    // 4. 分页器
     elements.pagination.innerHTML = total > 1 ? `
         <button onclick="changePage(-1)" ${state.currentPage === 1 ? 'disabled' : ''} class="text-xs tracking-widest uppercase ${state.currentPage === 1 ? 'opacity-20' : 'hover:text-indigo-500'}">Prev</button>
         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Page ${state.currentPage} / ${total}</span>
         <button onclick="changePage(1)" ${state.currentPage === total ? 'disabled' : ''} class="text-xs tracking-widest uppercase ${state.currentPage === total ? 'opacity-20' : 'hover:text-indigo-500'}">Next</button>
     ` : '';
 
-    // 5. 【核心改动】左上角统计数字：也改为显示云端总数
+    // 5. 顶部统计
     document.getElementById('stats').innerText = `${state.totalItems || 0} SECURED`;
-    
     lucide.createIcons();
 }
 
